@@ -1,144 +1,139 @@
-class Calculator {
-    constructor(oldOperandTextElement, currentOperandTextElement) {
-        this.oldOperandTextElement = oldOperandTextElement
-        this.currentOperandTextElement = currentOperandTextElement
-        this.clear()
-    }
+let operator = '';
+let oldValue = '';
+let currentValue = '';
+let gotResult = false;
 
-    clear() {
-        this.currentOperand = ''
-        this.oldOperand = ''
-        this.operation = undefined
-    }
 
-    delete() {
-        this.currentOperand = this.currentOperand.toString().slice(0,-1)
-    }
-    //adding numbers
-    appendNumber(number) {
-        //prevents from having multiple '.' and returns
-        if(number === '.' && this.currentOperand.includes('.')) return
-        //we convert it to string so we can easily add a new thing and we add a number we will click on and make it to string also
-        //we convert it to string so javascript knows 1+1 is not 2, but 11
-        this.currentOperand = this.currentOperand.toString() + number.toString()
-    }
+document.addEventListener("DOMContentLoaded", function() {
+    let clearButton = document.querySelector(".all-clear");
+    let deleteButton = document.querySelector(".delete");
+    let equalButton = document.querySelector(".equal");
+    let decimalButton = document.querySelector(".decimal");
 
-    chooseOperation(operation) {
-        //to prevent going through if we don't have values
-        if(this.currentOperand === '') return
-        //in order to make a multiple calculation
-        if (this.oldOperand !== '') {
-            this.compute()
-        }
-        //replacing current value to old one if we click any operation
-        this.operation = operation
-        this.oldOperand = this.currentOperand
-        this.currentOperand = ''
-    }
+    let numbers = document.querySelectorAll(".number");
+    let operators = document.querySelectorAll(".operator");
 
-    compute() {
-        let computation
-        //we're converting our strings back to numbers in order to make a calculation
-        const oldOp = parseFloat(this.oldOperand)
-        const currentOp = parseFloat(this.currentOperand)
-        //we're checking if the uses didn't click on any number and tries to click operations - the code doesn't run
-        if (isNan(oldOp) || isNaN(currentOp)) return
+    let oldScreen = document.querySelector(".old-operand");
+    let currentScreen = document.querySelector(".current-operand");
+    //looping through all the numbers (it's an array)
+    //them we're getting the text content of a button that has a number class
+    numbers.forEach((number) => number.addEventListener("click", function(e){
+        handleNumber(e.target.textContent);
+        //showing the value of a clicked button on the current screen
+        currentScreen.textContent = currentValue;
+    }))
+    //we're doing the same for operators
+    operators.forEach((op) => op.addEventListener("click", function(e){
+        handleOperator(e.target.textContent);
+        //showing the old value and the operator used
+        oldScreen.textContent = oldValue + " " + operator;
+        //making the current screen empty again
+        currentScreen.textContent = currentValue;
+    }))
 
-        switch(this.operation) {
-            case '/':
-                computation = oldOp / currentOp
-                break
-            case '*':
-                computation = oldOp * currentOp
-                break
-            case '+':
-                computation = oldOp + currentOp
-                break
-            case '-':
-                computation = oldOp - currentOp
-                break
-            default:
-                return
-        }
-        this.currentOperand = computation
-        this.operation = undefined
-        this.oldOperand = ''
-    }
-    //to make comas
-    getDisplayNumber(number) {
-        //we need a string to split it to decimals inside it and we're not sure we're getting a number or a string
-        const stringNUmber =number.toString()
-        //our integer numbers. We convert our string to float and then split in, making an array out of it.
-        //And we're taking the number before the period, aka 0
-        const integerDigits = parseFloat(stringNUmber.split('.')[0])
-        //same for decimals, but we're taking numbers after the period, aka 1
-        const decimalDigits = stringNUmber.split('.')[1]
+    clearButton.addEventListener("click", function(){
+        oldValue ='';
+        currentValue ='';
+        operator = '';
+        oldScreen.textContent = '';
+        currentScreen.textContent = '';
 
-        let integerDisplay
-        //checking if our integer digits is not a number. ANd it's when
-        //a user puts nothing there or just the decimals
-        if (isNaN(integerDigits)){
-            integerDisplay = ''
-        //and if the user did put the integer - we should use our local string, 
-        //and we don't want to have any decimals
-        } else {
-            integerDisplay = integerDigits.toLocaleString('en', {maximumFractionDigits: 0})
-        }
-        //checking if we have decimal digits
-        if (decimalDigits != null) {
-            return `${integerDisplay}.${decimalDigits}`
-        } else {
-            return integerDisplay
-        }
-    }
+    })
 
-    updateDisplay() {
-        this.currentOperandTextElement.innerText = this.getDisplayNumber(this.currentOperand)
-        //adding the operation sign to the calculation display
-        if(this.operation != null) {
-            this.oldOperandTextElement.innerText = `${this.getDisplayNumber(this.oldOperand)} ${this.operation}`
-        } else {
-            this.oldOperandTextElement.innerText = ''
-        }
+    equalButton.addEventListener("click", function(){
+        if (operator==='') return;
+        currentValue = operate(operator,oldValue,currentValue);
+        currentScreen.textContent = currentValue;
+        oldValue ='';
+        oldScreen.textContent = '';
+        operator = '';
+        gotResult = true;
+    })
+
+    decimalButton.addEventListener("click", function(){
+        addDecimal();
+    })
+
+   deleteButton.addEventListener("click", function(){
+    if(currentValue!== '')
+        currentValue = currentValue.slice(0, -1);
+        currentScreen.textContent = currentValue;
+   })
+})
+
+function handleNumber(num){
+    //if result was already there, type new number
+    if (gotResult) 
+    {
+        gotResult = false;
+        currentValue = num;
         
+    }
+    else{
+        //preventing from long numbers 
+        if(currentValue.length <= 10){
+        currentValue += num;
+        }
     }
 }
 
-const numberButtons = document.querySelectorAll('[data-number]');
-const operationButtons = document.querySelectorAll('[data-operation]');
-const equalsButton = document.querySelector('[data-equals]');
-const deleteButton = document.querySelector('[data-delete]');
-const allClearButton = document.querySelector('[data-all-clear]');
-const oldOperandTextElement = document.querySelector('[data-old-operand]');
-const currentOperandTextElement = document.querySelector('[data-current-operand]');
+function handleOperator(op){
+    //if currentValue and oldValue is empty, ignore
+    if (currentValue === ''  && oldValue === '') return;
+    //if oldValue is there and old operator is there, change operator
+    if (currentValue === ''  && oldValue !== '') 
+    {
+        operator = op;
+        return;
+    }
+    //if operator was already there, calculate then add new operator
+    if (operator !== '')
+    {
+        currentValue = operate(operator,oldValue,currentValue);
+        oldValue ='';
+    }
+    //updating the global operator to the new one
+    operator = op;
+    //showing two rows correctly
+    oldValue = currentValue;
+    currentValue = '';
+}
 
-const calculator = new Calculator(oldOperandTextElement, currentOperandTextElement);
+function operate(op, num1, num2){
+    num1 = Number(num1);
+    num2 = Number(num2);
 
-numberButtons.forEach(button => {
-    button.addEventListener ('click', () => {
-        calculator.appendNumber(button.innerText)
-        calculator.updateDisplay()
-    })
-})
+    switch (op) {
+        case "+":
+            num1 += num2;
+            break;
+        case "-":
+            num1 -= num2;
+            break;
+        case "/":
+            if(num2 === 0) 
+                num1 = "Error";
+            else 
+                num1 /= num2;
+            break;
+        case "*":
+            num1 *= num2;
+            break;    
+        default:
+            break;
+    }
+    if (num1 != "Error") 
+        num1 = mathNumber(num1);
+        num1 = num1.toString();
+    return num1;    
+}
 
-operationButtons.forEach(button => {
-    button.addEventListener ('click', () => {
-        calculator.chooseOperation(button.innerText)
-        calculator.updateDisplay()
-    })
-})
+function mathNumber(num){
+    return Math.round(num *1000) /1000;
+}
 
-equalsButton.addEventListener('click', button => {
-    calculator.compute()
-    calculator.updateDisplay()
-})
-
-allClearButton.addEventListener('click', button => {
-    calculator.clear()
-    calculator.updateDisplay()
-})
-
-deleteButton.addEventListener('click', button => {
-    calculator.delete()
-    calculator.updateDisplay()
-})
+function addDecimal(){
+    if(!currentValue.includes(".")){
+        currentValue += '.';
+    }
+}
